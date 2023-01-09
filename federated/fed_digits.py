@@ -209,6 +209,7 @@ if __name__ == '__main__':
     parser.add_argument('--mu', type=float, default=1e-2, help='The hyper parameter for fedprox')
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
     parser.add_argument('--resume', action='store_true', help ='resume training from the save path checkpoint')
+    parser.add_argument('--synth_method', type = str, default='ce', help='admm | ce')
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
