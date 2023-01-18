@@ -20,6 +20,108 @@ import torch.nn.utils.weight_norm as weightNorm
 import torch.nn.functional as func
 from torch.optim import SGD
 
+def src_img_synth_admm(data_loader, src_model, args):
+
+  #  gen_folder = 'gen_data_admm/'
+
+  #  data_list_file = args.root
+  #  data_list_file = data_list_file.replace('data/', gen_folder)
+  #  data_list_file += '/image_list/'+args.source+'2'+args.target+'.txt'
+    
+  #  dir = os.path.dirname(data_list_file)
+  #  if not os.path.exists(dir):
+  #      os.makedirs(dir)
+
+    # initialize
+  #  for batch_idx, images_t in enumerate(data_loader):
+
+  #      if batch_idx == 0 and os.path.exists(data_list_file):
+  #          os.remove(data_list_file)
+
+  #      images_t = images_t.to(device)
+        # get pseudo labels
+  #      y_t = src_model(images_t)
+  #      plabel_t = y_t.argmax(dim=1)
+
+   #     save_src_imgs(images_t.cpu(), plabel_t, path, gen_folder, data_list_file, args)
+
+ #   genset = DataSetGen(data_list_file)
+ #   genset_path = DataSetPath(genset)
+ #   gen_loader = DataLoader(genset_path, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
+
+    LAMB = torch.zeros_like(src_model.head.weight.data).to(device)
+    gen_dataset = None
+    gen_labels = None
+    for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+        y_s,_ = src_model(images_s)
+        labels_s = y_s.argmax(dim=1)
+        if gen_dataset == None:
+            gen_dataset = images_s
+            gen_labels = labels_s
+        else:
+            gen_dataset = torch.cat((gen_dataset, images_s), 0)
+            gen_labels = torch.cat((gen_labels, labels_s), 0)
+
+    for i in range(args.iters_admm):
+
+        print(f'admm iter: {i}/{args.iters_admm}')
+
+        # step1: update imgs
+        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+
+    #        images_s = images_s.to(device)
+    #        labels_s = labels_s.to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
+
+            # convert labels to one-hot
+            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
+
+            # init src img
+            images_s.requires_grad_()
+            optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
+            
+            for iter_i in range(args.iters_img):
+                y_s, f_s = src_model(images_s)
+                loss = func.cross_entropy(y_s, labels_s)
+                p_s = func.softmax(y_s, dim=1)
+                grad_matrix = (p_s - plabel_onehot).t() @ f_s / p_s.size(0)
+                new_matrix = grad_matrix + args.param_gamma * src_model.head.weight.data
+                grad_loss = torch.norm(new_matrix, p='fro') ** 2
+                loss += grad_loss * args.param_admm_rho / 2
+                loss += torch.trace(LAMB.t() @ new_matrix)
+                
+                optimizer_s.zero_grad()
+                loss.backward()
+                optimizer_s.step()
+
+            # update src imgs
+            gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = images_s
+       #     for img, path in zip(images_s.detach_().cpu(), paths):
+       #         torch.save(img.clone(), path)
+
+        # step2: update LAMB
+        grad_matrix = torch.zeros_like(LAMB).to(device)
+        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+       #     images_s = images_s.to(device)
+       #     labels_s = labels_s.to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
+
+            # convert labels to one-hot
+            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
+
+            y_s, f_s = src_model(images_s)
+            p_s = fun.softmax(y_s, dim=1)
+            grad_matrix += (p_s - plabel_onehot).t() @ f_s
+
+        new_matrix = grad_matrix / len(gen_dataset) + args.param_gamma * src_model.head.weight.data
+        LAMB += new_matrix * args.param_admm_rho
+
+    return gen_dataset, gen_labels
+
+
+
 class BackBone(nn.Module):
     """
     Model for benchmark experiment on Digits. 
@@ -448,103 +550,4 @@ if __name__ == '__main__':
 
 
 
-def src_img_synth_admm(data_loader, src_model, args):
-
-  #  gen_folder = 'gen_data_admm/'
-
-  #  data_list_file = args.root
-  #  data_list_file = data_list_file.replace('data/', gen_folder)
-  #  data_list_file += '/image_list/'+args.source+'2'+args.target+'.txt'
-    
-  #  dir = os.path.dirname(data_list_file)
-  #  if not os.path.exists(dir):
-  #      os.makedirs(dir)
-
-    # initialize
-  #  for batch_idx, images_t in enumerate(data_loader):
-
-  #      if batch_idx == 0 and os.path.exists(data_list_file):
-  #          os.remove(data_list_file)
-
-  #      images_t = images_t.to(device)
-        # get pseudo labels
-  #      y_t = src_model(images_t)
-  #      plabel_t = y_t.argmax(dim=1)
-
-   #     save_src_imgs(images_t.cpu(), plabel_t, path, gen_folder, data_list_file, args)
-
- #   genset = DataSetGen(data_list_file)
- #   genset_path = DataSetPath(genset)
- #   gen_loader = DataLoader(genset_path, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
-
-    LAMB = torch.zeros_like(src_model.head.weight.data).to(device)
-    gen_dataset = None
-    gen_labels = None
-    for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-        y_s,_ = src_model(images_s)
-        labels_s = y_s.argmax(dim=1)
-        if gen_dataset == None:
-            gen_dataset = images_s
-            gen_labels = labels_s
-        else:
-            gen_dataset = torch.cat((gen_dataset, images_s), 0)
-            gen_labels = torch.cat((gen_labels, labels_s), 0)
-
-    for i in range(args.iters_admm):
-
-        print(f'admm iter: {i}/{args.iters_admm}')
-
-        # step1: update imgs
-        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-
-    #        images_s = images_s.to(device)
-    #        labels_s = labels_s.to(device)
-            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
-            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
-
-            # convert labels to one-hot
-            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
-
-            # init src img
-            images_s.requires_grad_()
-            optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
-            
-            for iter_i in range(args.iters_img):
-                y_s, f_s = src_model(images_s)
-                loss = func.cross_entropy(y_s, labels_s)
-                p_s = func.softmax(y_s, dim=1)
-                grad_matrix = (p_s - plabel_onehot).t() @ f_s / p_s.size(0)
-                new_matrix = grad_matrix + args.param_gamma * src_model.head.weight.data
-                grad_loss = torch.norm(new_matrix, p='fro') ** 2
-                loss += grad_loss * args.param_admm_rho / 2
-                loss += torch.trace(LAMB.t() @ new_matrix)
-                
-                optimizer_s.zero_grad()
-                loss.backward()
-                optimizer_s.step()
-
-            # update src imgs
-            gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = images_s
-       #     for img, path in zip(images_s.detach_().cpu(), paths):
-       #         torch.save(img.clone(), path)
-
-        # step2: update LAMB
-        grad_matrix = torch.zeros_like(LAMB).to(device)
-        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-       #     images_s = images_s.to(device)
-       #     labels_s = labels_s.to(device)
-            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
-            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
-
-            # convert labels to one-hot
-            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
-
-            y_s, f_s = src_model(images_s)
-            p_s = fun.softmax(y_s, dim=1)
-            grad_matrix += (p_s - plabel_onehot).t() @ f_s
-
-        new_matrix = grad_matrix / len(gen_dataset) + args.param_gamma * src_model.head.weight.data
-        LAMB += new_matrix * args.param_admm_rho
-
-    return gen_dataset, gen_labels
 
