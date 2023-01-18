@@ -60,6 +60,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
     gen_dataset = None
     gen_labels = None
     for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+        if batch_idx == 10:
+            break
         images_s = images_s.to(device)
         y_s,_ = src_model(images_s)
         labels_s = y_s.argmax(dim=1)
@@ -76,6 +78,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
 
         # step1: update imgs
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+            if batch_idx == 10:
+                break
 
     #        images_s = images_s.to(device)
     #        labels_s = labels_s.to(device)
@@ -111,6 +115,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
         # step2: update LAMB
         grad_matrix = torch.zeros_like(LAMB).to(device)
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+            if batch_idx == 10:
+                break
        #     images_s = images_s.to(device)
        #     labels_s = labels_s.to(device)
             images_s = torch.clone(gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]).to(device)
@@ -399,7 +405,7 @@ if __name__ == '__main__':
     parser.add_argument('--test', action='store_true', help ='test the pretrained model')
     parser.add_argument('--percent', type = float, default= 0.1, help ='percentage of dataset to train')
     parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
-    parser.add_argument('--batch', type = int, default= 64, help ='batch size')
+    parser.add_argument('--batch', type = int, default= 8, help ='batch size')
     parser.add_argument('--iters', type = int, default=100, help = 'iterations for communication')
     parser.add_argument('--wk_iters', type = int, default=1, help = 'optimization iters in local worker between communication')
     parser.add_argument('--mode', type = str, default='fedbn', help='fedavg | fedprox | fedbn')
@@ -407,7 +413,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
     parser.add_argument('--resume', action='store_true', help ='resume training from the save path checkpoint')
     parser.add_argument('--synth_method', type = str, default='admm', help='admm | ce')
-    parser.add_argument('-b', '--batch-size', default=64, type=int,
+    parser.add_argument('-b', '--batch-size', default=8, type=int,
                         metavar='N', help='mini-batch size (default: 32)')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
