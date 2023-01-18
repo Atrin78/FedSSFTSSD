@@ -6,6 +6,7 @@ base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(base_path)
 
 import torch
+from typing import Tuple, Optional, List, Dict
 from torch import nn, optim
 import time
 import copy
@@ -15,6 +16,9 @@ import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 from utils import data_utils
+import torch.nn.utils.weight_norm as weightNorm
+import torch.nn.functional as func
+from torch.optim import SGD
 
 def prepare_data(args):
     # Prepare data
@@ -58,17 +62,16 @@ def prepare_data(args):
 
     # USPS
     usps_trainset      = data_utils.DigitsDataset(data_path='../data/USPS', channels=1, percent=args.percent,  train=True,  transform=transform_usps)
-    print(len(usps_trainset))
     usps_testset       = data_utils.DigitsDataset(data_path='../data/USPS', channels=1, percent=args.percent,  train=False, transform=transform_usps)
 
     # Synth Digits
-    synth_trainset     = data_utils.DigitsDataset(data_path='../data/SynthDigits/', channels=3, percent=args.percent,  train=True,  transform=transform_synth)
-    print(len(synth_trainset))
+    # train changed to test
+    synth_trainset     = data_utils.DigitsDataset(data_path='../data/SynthDigits/', channels=3, percent=args.percent,  train=False,  transform=transform_synth)
     synth_testset      = data_utils.DigitsDataset(data_path='../data/SynthDigits/', channels=3, percent=args.percent,  train=False, transform=transform_synth)
+    synth = torch.utils.data.ConcatDataset([synth_trainset, synth_testset])    
 
     # MNIST-M
     mnistm_trainset     = data_utils.DigitsDataset(data_path='../data/MNIST_M/', channels=3, percent=args.percent,  train=True,  transform=transform_mnistm)
-    print(len(mnistm_trainset))
     mnistm_testset      = data_utils.DigitsDataset(data_path='../data/MNIST_M/', channels=3, percent=args.percent,  train=False, transform=transform_mnistm)
 
     mnist_train_loader = torch.utils.data.DataLoader(mnist_trainset, batch_size=args.batch, shuffle=True)
@@ -77,13 +80,14 @@ def prepare_data(args):
     svhn_test_loader = torch.utils.data.DataLoader(svhn_testset, batch_size=args.batch, shuffle=False)
     usps_train_loader = torch.utils.data.DataLoader(usps_trainset, batch_size=args.batch,  shuffle=True)
     usps_test_loader = torch.utils.data.DataLoader(usps_testset, batch_size=args.batch, shuffle=False)
-    synth_train_loader = torch.utils.data.DataLoader(synth_trainset, batch_size=args.batch,  shuffle=True)
-    synth_test_loader = torch.utils.data.DataLoader(synth_testset, batch_size=args.batch, shuffle=False)
+ #   synth_train_loader = torch.utils.data.DataLoader(synth_trainset, batch_size=args.batch,  shuffle=True)
+ #   synth_test_loader = torch.utils.data.DataLoader(synth_testset, batch_size=args.batch, shuffle=False)
+    synth_loader = torch.utils.data.DataLoader(synth, batch_size=args.batch,  shuffle=True)
     mnistm_train_loader = torch.utils.data.DataLoader(mnistm_trainset, batch_size=args.batch,  shuffle=True)
     mnistm_test_loader = torch.utils.data.DataLoader(mnistm_testset, batch_size=args.batch, shuffle=False)
 
-    train_loaders = [mnist_train_loader, svhn_train_loader, usps_train_loader, synth_train_loader, mnistm_train_loader]
-    test_loaders  = [mnist_test_loader, svhn_test_loader, usps_test_loader, synth_test_loader, mnistm_test_loader]
+    train_loaders = [mnist_train_loader, svhn_train_loader, usps_train_loader, mnistm_train_loader]
+    test_loaders  = [mnist_test_loader, svhn_test_loader, usps_test_loader, mnistm_test_loader, synth_loader]
 
     return train_loaders, test_loaders
 
@@ -99,7 +103,7 @@ def train(model, train_loader, optimizer, loss_fun, client_num, device):
         num_data += y.size(0)
         x = x.to(device).float()
         y = y.to(device).long()
-        output = model(x)
+        output,_ = model(x)
 
         loss = loss_fun(output, y)
         loss.backward()
@@ -122,7 +126,7 @@ def train_fedprox(args, model, train_loader, optimizer, loss_fun, client_num, de
         num_data += y.size(0)
         x = x.to(device).float()
         y = y.to(device).long()
-        output = model(x)
+        output,_ = model(x)
 
         loss = loss_fun(output, y)
 
@@ -154,7 +158,7 @@ def test(model, test_loader, loss_fun, device):
         target = target.to(device).long()
         targets.append(target.detach().cpu().numpy())
 
-        output = model(data)
+        output,_ = model(data)
         
         test_loss += loss_fun(output, target).item()
         pred = output.data.max(1)[1]
@@ -212,7 +216,18 @@ if __name__ == '__main__':
     parser.add_argument('--mu', type=float, default=1e-2, help='The hyper parameter for fedprox')
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
     parser.add_argument('--resume', action='store_true', help ='resume training from the save path checkpoint')
-    parser.add_argument('--synth_method', type = str, default='ce', help='admm | ce')
+    parser.add_argument('--synth_method', type = str, default='admm', help='admm | ce')
+    parser.add_argument('-b', '--batch-size', default=64, type=int,
+                        metavar='N', help='mini-batch size (default: 32)')
+    parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+                        help='momentum')
+    parser.add_argument('--momentum_img', default=0.9, type=float, metavar='M',
+                        help='momentum of img optimizer')
+    parser.add_argument('--iters_img', default=10, type=int, metavar='N',
+                        help='number of total inner epochs to run')
+    parser.add_argument('--param_gamma', default=0.01, type=float)
+    parser.add_argument('--param_admm_rho', default=0.01, type=float)
+    parser.add_argument('--iters_admm', default=3, type=int)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
@@ -237,19 +252,20 @@ if __name__ == '__main__':
     SAVE_PATH = os.path.join(args.save_path, '{}'.format(args.mode))
    
    
-    server_model = DigitModel().to(device)
+    server_model = ImageClassifier().to(device)
     loss_fun = nn.CrossEntropyLoss()
 
     # prepare the data
     train_loaders, test_loaders = prepare_data(args)
 
     # name of each client dataset
-    datasets = ['MNIST', 'SVHN', 'USPS', 'SynthDigits', 'MNIST-M']
+    datasets = ['MNIST', 'SVHN', 'USPS', 'MNIST-M', 'SynthDigits']
     
     # federated setting
-    client_num = len(datasets)
+    client_num = len(datasets)-1
     client_weights = [1/client_num for i in range(client_num)]
     models = [copy.deepcopy(server_model).to(device) for idx in range(client_num)]
+    
 
     if args.test:
         print('Loading snapshots...')
@@ -283,7 +299,20 @@ if __name__ == '__main__':
 
     # start training
     for a_iter in range(resume_iter, args.iters):
+        # freezing server model
+        for param in server_model.parameters():
+            param.requires_grad = False
+        server_model.eval()
+
+        if args.synth_method == 'ce':
+            pass
+        elif args.synth_method == 'admm':
+            vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
+
+
         optimizers = [optim.SGD(params=models[idx].parameters(), lr=args.lr) for idx in range(client_num)]
+
+
         for wi in range(args.wk_iters):
             print("============ Train epoch {} ============".format(wi + a_iter * args.wk_iters))
             if args.log: logfile.write("============ Train epoch {} ============\n".format(wi + a_iter * args.wk_iters)) 
@@ -337,3 +366,187 @@ if __name__ == '__main__':
         logfile.close()
 
 
+
+
+
+def src_img_synth_admm(data_loader, src_model, args):
+
+  #  gen_folder = 'gen_data_admm/'
+
+  #  data_list_file = args.root
+  #  data_list_file = data_list_file.replace('data/', gen_folder)
+  #  data_list_file += '/image_list/'+args.source+'2'+args.target+'.txt'
+    
+  #  dir = os.path.dirname(data_list_file)
+  #  if not os.path.exists(dir):
+  #      os.makedirs(dir)
+
+    # initialize
+  #  for batch_idx, images_t in enumerate(data_loader):
+
+  #      if batch_idx == 0 and os.path.exists(data_list_file):
+  #          os.remove(data_list_file)
+
+  #      images_t = images_t.to(device)
+        # get pseudo labels
+  #      y_t = src_model(images_t)
+  #      plabel_t = y_t.argmax(dim=1)
+
+   #     save_src_imgs(images_t.cpu(), plabel_t, path, gen_folder, data_list_file, args)
+
+ #   genset = DataSetGen(data_list_file)
+ #   genset_path = DataSetPath(genset)
+ #   gen_loader = DataLoader(genset_path, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
+
+    LAMB = torch.zeros_like(src_model.head.weight.data).to(device)
+    gen_dataset = None
+    gen_labels = None
+    for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+        y_s,_ = src_model(images_s)
+        labels_s = y_s.argmax(dim=1)
+        if gen_dataset = None:
+            gen_dataset = images_s
+            gen_labels = labels_s
+        else:
+            gen_dataset = torch.cat((gen_dataset, images_s), 0)
+            gen_labels = torch.cat((gen_labels, labels_s), 0)
+
+    for i in range(args.iters_admm):
+
+        print(f'admm iter: {i}/{args.iters_admm}')
+
+        # step1: update imgs
+        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+
+    #        images_s = images_s.to(device)
+    #        labels_s = labels_s.to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
+
+            # convert labels to one-hot
+            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
+
+            # init src img
+            images_s.requires_grad_()
+            optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
+            
+            for iter_i in range(args.iters_img):
+                y_s, f_s = src_model(images_s)
+                loss = func.cross_entropy(y_s, labels_s)
+                p_s = func.softmax(y_s, dim=1)
+                grad_matrix = (p_s - plabel_onehot).t() @ f_s / p_s.size(0)
+                new_matrix = grad_matrix + args.param_gamma * src_model.head.weight.data
+                grad_loss = torch.norm(new_matrix, p='fro') ** 2
+                loss += grad_loss * args.param_admm_rho / 2
+                loss += torch.trace(LAMB.t() @ new_matrix)
+                
+                optimizer_s.zero_grad()
+                loss.backward()
+                optimizer_s.step()
+
+            # update src imgs
+            gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = images_s
+       #     for img, path in zip(images_s.detach_().cpu(), paths):
+       #         torch.save(img.clone(), path)
+
+        # step2: update LAMB
+        grad_matrix = torch.zeros_like(LAMB).to(device)
+        for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
+       #     images_s = images_s.to(device)
+       #     labels_s = labels_s.to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]
+
+            # convert labels to one-hot
+            plabel_onehot = labels_to_one_hot(labels_s, 10, device)
+
+            y_s, f_s = src_model(images_s)
+            p_s = fun.softmax(y_s, dim=1)
+            grad_matrix += (p_s - plabel_onehot).t() @ f_s
+
+        new_matrix = grad_matrix / len(gen_dataset) + args.param_gamma * src_model.head.weight.data
+        LAMB += new_matrix * args.param_admm_rho
+
+    return gen_dataset, gen_labels
+
+
+
+
+class BackBone(nn.Module):
+    """
+    Model for benchmark experiment on Digits. 
+    """
+    def __init__(self, num_classes=10, **kwargs):
+        super(BackBone, self).__init__()
+        self.conv1 = nn.Conv2d(3, 64, 5, 1, 2)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 64, 5, 1, 2)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 128, 5, 1, 2)
+        self.bn3 = nn.BatchNorm2d(128)
+    
+        self.fc1 = nn.Linear(6272, 2048)
+        self.bn4 = nn.BatchNorm1d(2048)
+   #     self.fc2 = nn.Linear(2048, 512)
+   #     self.bn5 = nn.BatchNorm1d(512)
+   #     self.fc3 = nn.Linear(512, num_classes)
+
+
+    def forward(self, x):
+        x = func.relu(self.bn1(self.conv1(x)))
+        x = func.max_pool2d(x, 2)
+
+        x = func.relu(self.bn2(self.conv2(x)))
+        x = func.max_pool2d(x, 2)
+
+        x = func.relu(self.bn3(self.conv3(x)))
+
+        x = x.view(x.shape[0], -1)
+
+        x = self.fc1(x)
+        x = self.bn4(x)
+        x = func.relu(x)
+
+    #    x = self.fc2(x)
+    #    x = self.bn5(x)
+    #    x = func.relu(x)
+
+    #    x = self.fc3(x)
+        return x
+
+class ImageClassifier(nn.Module):
+
+    def __init__(self, num_classes: int = 10, bottleneck_dim: Optional[int] = 512):
+        super(ImageClassifier, self).__init__()
+        self.backbone = BackBone()
+        self.num_classes = num_classes
+        self.bottleneck = nn.Sequential(
+            nn.Linear(2048, bottleneck_dim),
+            nn.BatchNorm1d(bottleneck_dim),
+            nn.ReLU()
+        )
+        self._features_dim = bottleneck_dim
+        self.head = nn.Linear(self._features_dim, num_classes)
+
+    @property
+    def features_dim(self) -> int:
+        """The dimension of features before the final `head` layer"""
+        return self._features_dim
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """"""
+        x = self.backbone(x)
+        f = self.bottleneck(x)
+        predictions = self.head(f)
+        return predictions, f
+
+    def get_parameters(self) -> List[Dict]:
+        """A parameter list which decides optimization hyper-parameters,
+            such as the relative learning rate of each layer
+        """
+        params = [
+            {"params": self.backbone.parameters(), "lr_mult": 0.1},
+            {"params": self.bottleneck.parameters(), "lr_mult": 1.},
+            {"params": self.head.parameters(), "lr_mult": 1.},
+        ]
+        return params
