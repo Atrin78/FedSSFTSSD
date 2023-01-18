@@ -64,7 +64,7 @@ class BackBone(nn.Module):
 
 class ImageClassifier(nn.Module):
 
-    def __init__(self, num_classes: int = 10, bottleneck_dim: Optional[int] = 512):
+    def __init__(self, num_classes: int = 10, bottleneck_dim: Optional[int] = 512,**kwargs):
         super(ImageClassifier, self).__init__()
         self.backbone = BackBone()
         self.num_classes = num_classes
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     SAVE_PATH = os.path.join(args.save_path, '{}'.format(args.mode))
    
    
-    server_model = ImageClassifier().to(device)
+    server_model = ImageClassifier(10,512).to(device)
     loss_fun = nn.CrossEntropyLoss()
 
     # prepare the data
