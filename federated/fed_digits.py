@@ -20,6 +20,13 @@ import torch.nn.utils.weight_norm as weightNorm
 import torch.nn.functional as func
 from torch.optim import SGD
 
+def labels_to_one_hot(labels, num_class, device):
+    # convert labels to one-hot
+    labels_one_hot = torch.FloatTensor(labels.shape[0], num_class).to(device)
+    labels_one_hot.zero_()
+    labels_one_hot.scatter_(1, labels.unsqueeze(1), 1)
+    return labels_one_hot
+
 def src_img_synth_admm(gen_loader, src_model, args):
 
   #  gen_folder = 'gen_data_admm/'
