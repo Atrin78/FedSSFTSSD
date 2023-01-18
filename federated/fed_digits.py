@@ -120,7 +120,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
             plabel_onehot = labels_to_one_hot(labels_s, 10, device)
 
             y_s, f_s = src_model(images_s)
-            p_s = fun.softmax(y_s, dim=1)
+            p_s = func.softmax(y_s, dim=1)
             grad_matrix += (p_s - plabel_onehot).t() @ f_s
 
         new_matrix = grad_matrix / len(gen_dataset) + args.param_gamma * src_model.head.weight.data
