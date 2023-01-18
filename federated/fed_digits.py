@@ -87,7 +87,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
 
             # init src img
             images_s.requires_grad_()
-            optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
+            optimizer_s = SGD(images_s, args.lr_img, momentum=args.momentum_img)
             
             for iter_i in range(args.iters_img):
                 y_s, f_s = src_model(images_s)
