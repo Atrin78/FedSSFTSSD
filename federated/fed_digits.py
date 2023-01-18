@@ -79,15 +79,15 @@ def src_img_synth_admm(gen_loader, src_model, args):
 
     #        images_s = images_s.to(device)
     #        labels_s = labels_s.to(device)
-            images_s = torch.clone(gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]).to(device)
-            labels_s = torch.clone(gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]).to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch].clone().detach().to(device)
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch].clone().detach().to(device)
 
             # convert labels to one-hot
             plabel_onehot = labels_to_one_hot(labels_s, 10, device)
 
             # init src img
             images_s.requires_grad_()
-            optimizer_s = SGD(images_s, args.lr_img, momentum=args.momentum_img)
+            optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
             
             for iter_i in range(args.iters_img):
                 y_s, f_s = src_model(images_s)
