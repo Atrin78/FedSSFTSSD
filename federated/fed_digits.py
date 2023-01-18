@@ -20,7 +20,7 @@ import torch.nn.utils.weight_norm as weightNorm
 import torch.nn.functional as func
 from torch.optim import SGD
 
-def src_img_synth_admm(data_loader, src_model, args):
+def src_img_synth_admm(gen_loader, src_model, args):
 
   #  gen_folder = 'gen_data_admm/'
 
