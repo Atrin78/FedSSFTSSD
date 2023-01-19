@@ -119,8 +119,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 break
        #     images_s = images_s.to(device)
        #     labels_s = labels_s.to(device)
-            images_s = torch.clone(gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch]).to(device)
-            labels_s = torch.clone(gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch]).to(device)
+            images_s = gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch].clone().detach().to(device)
+            labels_s = gen_labels[batch_idx*args.batch:(batch_idx+1)*args.batch].clone().detach().to(device)
 
             # convert labels to one-hot
             plabel_onehot = labels_to_one_hot(labels_s, 10, device)
