@@ -19,6 +19,8 @@ from utils import data_utils
 import torch.nn.utils.weight_norm as weightNorm
 import torch.nn.functional as func
 from torch.optim import SGD
+import matplotlib.pyplot as plt
+
 
 def labels_to_one_hot(labels, num_class, device):
     # convert labels to one-hot
@@ -60,7 +62,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
     gen_dataset = None
     gen_labels = None
     for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-        if batch_idx == 10:
+        if batch_idx == 1000:
             break
         images_s = images_s.to(device)
         y_s,_ = src_model(images_s)
@@ -78,7 +80,11 @@ def src_img_synth_admm(gen_loader, src_model, args):
 
         # step1: update imgs
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-            if batch_idx == 10:
+            if batch_idx==0:
+                for i in range(10):
+                    plt.imshow(images_s[i])
+                    plt.savefig("im"+str(i), images_s[i])
+            if batch_idx == 1000:
                 break
 
     #        images_s = images_s.to(device)
@@ -115,7 +121,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
         # step2: update LAMB
         grad_matrix = torch.zeros_like(LAMB).to(device)
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-            if batch_idx == 10:
+            if batch_idx == 1000:
                 break
        #     images_s = images_s.to(device)
        #     labels_s = labels_s.to(device)
@@ -501,11 +507,17 @@ if __name__ == '__main__':
             param.requires_grad = False
         server_model.eval()
 
-        if args.synth_method == 'ce':
-            pass
-        elif args.synth_method == 'admm':
-            vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
+        if a_iter >= 10:
+            if args.synth_method == 'ce':
+                pass
+            elif args.synth_method == 'admm':
+                vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
 
+        if a_iter==10:
+            for i in range(10):
+                plt.imshow(vir_dataset[i])
+                plt.savefig("vir"+str(i), vir_dataset[i])
+        
 
         optimizers = [optim.SGD(params=models[idx].parameters(), lr=args.lr) for idx in range(client_num)]
 
