@@ -82,7 +82,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
             if batch_idx==0:
                 for i in range(10):
-                    plt.imshow(np.moveaxis(images_s[i], 0, -1))
+                    plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
                     plt.savefig("im"+str(i))
             if batch_idx == 1000:
                 break
@@ -515,7 +515,7 @@ if __name__ == '__main__':
 
         if a_iter==1:
             for i in range(10):
-                plt.imshow(np.moveaxis(vir_dataset[i], 0, -1))
+                plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
                 plt.savefig("vir"+str(i))
         
 
