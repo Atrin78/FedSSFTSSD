@@ -411,7 +411,7 @@ if __name__ == '__main__':
     parser.add_argument('--test', action='store_true', help ='test the pretrained model')
     parser.add_argument('--percent', type = float, default= 0.1, help ='percentage of dataset to train')
     parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
-    parser.add_argument('--batch', type = int, default= 8, help ='batch size')
+    parser.add_argument('--batch', type = int, default= 11, help ='batch size')
     parser.add_argument('--iters', type = int, default=100, help = 'iterations for communication')
     parser.add_argument('--wk_iters', type = int, default=1, help = 'optimization iters in local worker between communication')
     parser.add_argument('--mode', type = str, default='fedbn', help='fedavg | fedprox | fedbn')
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
     parser.add_argument('--resume', action='store_true', help ='resume training from the save path checkpoint')
     parser.add_argument('--synth_method', type = str, default='admm', help='admm | ce')
-    parser.add_argument('-b', '--batch-size', default=8, type=int,
+    parser.add_argument('-b', '--batch-size', default=11, type=int,
                         metavar='N', help='mini-batch size (default: 32)')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
