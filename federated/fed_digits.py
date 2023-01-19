@@ -82,8 +82,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
             if batch_idx==0:
                 for i in range(10):
-                    plt.imshow(images_s[i])
-                    plt.savefig("im"+str(i), images_s[i])
+                    plt.imshow(np.moveaxis(images_s[i], 0, -1))
+                    plt.savefig("im"+str(i))
             if batch_idx == 1000:
                 break
 
@@ -507,16 +507,16 @@ if __name__ == '__main__':
             param.requires_grad = False
         server_model.eval()
 
-        if a_iter >= 10:
+        if a_iter >= 1:
             if args.synth_method == 'ce':
                 pass
             elif args.synth_method == 'admm':
                 vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
 
-        if a_iter==10:
+        if a_iter==1:
             for i in range(10):
-                plt.imshow(vir_dataset[i])
-                plt.savefig("vir"+str(i), vir_dataset[i])
+                plt.imshow(np.moveaxis(vir_dataset[i], 0, -1))
+                plt.savefig("vir"+str(i))
         
 
         optimizers = [optim.SGD(params=models[idx].parameters(), lr=args.lr) for idx in range(client_num)]
