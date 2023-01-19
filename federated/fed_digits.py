@@ -537,6 +537,8 @@ if __name__ == '__main__':
 
         # start testing
         for test_idx, test_loader in enumerate(test_loaders):
+            if test_idx==client_num:
+                break
             test_loss, test_acc = test(models[test_idx], test_loader, loss_fun, device)
             print(' {:<11s}| Test  Loss: {:.4f} | Test  Acc: {:.4f}'.format(datasets[test_idx], test_loss, test_acc))
             if args.log:
