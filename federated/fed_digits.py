@@ -515,13 +515,13 @@ if __name__ == '__main__':
             param.requires_grad = False
         server_model.eval()
 
-        if a_iter >= 0:
+        if a_iter >= 10:
             if args.synth_method == 'ce':
                 pass
             elif args.synth_method == 'admm':
                 vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
 
-        if a_iter==0:
+        if a_iter==10:
             for i in range(10):
                 plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
                 plt.savefig("vir"+str(i))
