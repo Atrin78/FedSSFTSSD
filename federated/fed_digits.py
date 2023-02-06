@@ -82,6 +82,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
             if batch_idx==0:
                 for i in range(10):
+                    print('hi')
+                    print(labels_s[i])
                     plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
                     plt.savefig("im"+str(i))
             if batch_idx == 100:
@@ -100,6 +102,10 @@ def src_img_synth_admm(gen_loader, src_model, args):
             optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
             
             for iter_i in range(args.iters_img):
+                if batch_idx == 0:
+                    for i in range(10):
+                        plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
+                        plt.savefig("step" + str(iter_i)+'-' + str(i))
                 y_s, f_s = src_model(images_s)
                 loss = func.cross_entropy(y_s, labels_s)
                 p_s = func.softmax(y_s, dim=1)
