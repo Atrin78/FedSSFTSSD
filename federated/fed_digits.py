@@ -509,17 +509,17 @@ if __name__ == '__main__':
     # start training
     for a_iter in range(resume_iter, args.iters):
         # freezing server model
-        for param in server_model.parameters():
-            param.requires_grad = False
-        server_model.eval()
+        # for param in server_model.parameters():
+        #     param.requires_grad = False
+        # server_model.eval()
 
-        if a_iter >= 10:
+        if a_iter >= 0:
             if args.synth_method == 'ce':
                 pass
             elif args.synth_method == 'admm':
                 vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
 
-        if a_iter==10:
+        if a_iter==0:
             for i in range(10):
                 plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
                 plt.savefig("vir"+str(i))
