@@ -68,6 +68,12 @@ def src_img_synth_admm(gen_loader, src_model, args):
         y_s,_ = src_model(images_s)
         labels_s = y_s.argmax(dim=1)
         if gen_dataset == None:
+            if batch_idx==0:
+                for i in range(10):
+                    print('hi')
+                    print(labels_s[i])
+                    plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
+                    plt.savefig("what"+str(i))
             gen_dataset = images_s
             gen_labels = labels_s
         else:
@@ -83,7 +89,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
             if batch_idx==0:
                 for i in range(10):
                     print('hi')
-                    print(labels_s[i])
+                    print(gen_labels[i])
                     plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
                     plt.savefig("im"+str(i))
             if batch_idx == 100:
