@@ -117,8 +117,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 
                 optimizer_s.zero_grad()
                 loss.backward()
-                print('grad')
-                print(images_s.grad)
+                # print('grad')
+                # print(images_s.grad)
                 optimizer_s.step()
 
             # update src imgs
@@ -438,7 +438,7 @@ if __name__ == '__main__':
     parser.add_argument('--param_gamma', default=0.01, type=float)
     parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=3, type=int)
-    parser.add_argument('--lr_img', default=10., type=float)
+    parser.add_argument('--lr_img', default=1000000., type=float)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
