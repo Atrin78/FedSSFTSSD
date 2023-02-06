@@ -117,6 +117,8 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 
                 optimizer_s.zero_grad()
                 loss.backward()
+                print('grad')
+                print(images_s.grad)
                 optimizer_s.step()
 
             # update src imgs
@@ -509,9 +511,9 @@ if __name__ == '__main__':
     # start training
     for a_iter in range(resume_iter, args.iters):
         # freezing server model
-        # for param in server_model.parameters():
-        #     param.requires_grad = False
-        # server_model.eval()
+        for param in server_model.parameters():
+            param.requires_grad = False
+        server_model.eval()
 
         if a_iter >= 0:
             if args.synth_method == 'ce':
