@@ -80,12 +80,12 @@ def src_img_synth_admm(gen_loader, src_model, args):
 
         # step1: update imgs
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
-            if batch_idx==0:
-                for i in range(10):
+            if batch_idx==0 and i==0:
+                for j in range(10):
                     print('hi')
-                    print(gen_labels[i])
-                    plt.imshow(np.moveaxis(gen_dataset[i].cpu().detach().numpy(), 0, -1))
-                    plt.savefig("im"+str(i))
+                    print(gen_labels[j])
+                    plt.imshow(np.moveaxis(gen_dataset[j].cpu().detach().numpy(), 0, -1))
+                    plt.savefig("im"+str(j))
             if batch_idx == 100:
                 break
 
@@ -120,6 +120,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 # print('grad')
                 # print(images_s.grad)
                 optimizer_s.step()
+                images_s = torch.clip(images_s, 0.0, 255.0)
 
             # update src imgs
             gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = images_s
