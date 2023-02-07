@@ -102,10 +102,10 @@ def src_img_synth_admm(gen_loader, src_model, args):
             optimizer_s = SGD([images_s], args.lr_img, momentum=args.momentum_img)
             
             for iter_i in range(args.iters_img):
-                if batch_idx == 0:
-                    for i in range(10):
-                        plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
-                        plt.savefig("step" + str(iter_i)+'-' + str(i))
+                # if batch_idx == 0:
+                #     for i in range(10):
+                #         plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
+                #         plt.savefig("step" + str(iter_i)+'-' + str(i))
                 y_s, f_s = src_model(images_s)
                 loss = func.cross_entropy(y_s, labels_s)
                 p_s = func.softmax(y_s, dim=1)
@@ -438,7 +438,7 @@ if __name__ == '__main__':
     parser.add_argument('--param_gamma', default=0.01, type=float)
     parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=3, type=int)
-    parser.add_argument('--lr_img', default=1000., type=float)
+    parser.add_argument('--lr_img', default=10000., type=float)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
