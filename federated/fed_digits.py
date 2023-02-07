@@ -23,8 +23,8 @@ import matplotlib.pyplot as plt
 
 
 def pgd_attack(model, data, labels, loss_fun, device, eps=0.05, alpha=0.003125, iters=40):
-    data = data.to(device).float
-    labels = labels.to(device).long
+    data = data.to(device).float()
+    labels = labels.to(device).long()
 
     ori_data = data.clone().detach().to(device).float
 
