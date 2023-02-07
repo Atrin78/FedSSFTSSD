@@ -436,10 +436,10 @@ if __name__ == '__main__':
                         help='momentum of img optimizer')
     parser.add_argument('--iters_img', default=10, type=int, metavar='N',
                         help='number of total inner epochs to run')
-    parser.add_argument('--param_gamma', default=0.01, type=float)
-    parser.add_argument('--param_admm_rho', default=1, type=float)
+    parser.add_argument('--param_gamma', default=1, type=float)
+    parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=10, type=int)
-    parser.add_argument('--lr_img', default=100., type=float)
+    parser.add_argument('--lr_img', default=1000., type=float)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
