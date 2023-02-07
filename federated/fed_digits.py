@@ -439,7 +439,7 @@ if __name__ == '__main__':
     parser.add_argument('--param_gamma', default=0.01, type=float)
     parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=3, type=int)
-    parser.add_argument('--lr_img', default=10000., type=float)
+    parser.add_argument('--lr_img', default=1000., type=float)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
@@ -544,7 +544,19 @@ if __name__ == '__main__':
                         train(model, train_loader, optimizer, loss_fun, client_num, device)
                 else:
                     train(model, train_loader, optimizer, loss_fun, client_num, device)
-         
+
+        for param in models[0].parameters():
+            param.requires_grad = False
+        models[0].eval()
+        if a_iter >= 20:
+            vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], models[0], args)
+        if a_iter==20:
+            for i in range(10):
+                plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
+                plt.savefig("vir"+str(i))
+        for param in models[0].parameters():
+            param.requires_grad = True
+        models[0].eval()
         # aggregation
         server_model, models = communication(args, server_model, models, client_weights)
         
