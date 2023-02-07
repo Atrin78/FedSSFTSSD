@@ -22,6 +22,28 @@ from torch.optim import SGD
 import matplotlib.pyplot as plt
 
 
+def pgd_attack(model, data, labels, loss_fun, device, eps=0.05, alpha=0.003125, iters=40):
+    data = data.to(device)
+    labels = labels.to(device)
+
+    ori_data = data.data
+
+    for i in range(iters):
+        data.requires_grad = True
+        outputs = model(data)
+
+        model.zero_grad()
+        cost = loss_fun(outputs, labels).to(device)
+        cost.backward()
+
+        adv_data = data - alpha * data.grad.sign()
+        eta = torch.clamp(adv_data - ori_data, min=-eps, max=eps)
+        #       data = torch.clamp(ori_data + eta, min=0, max=1).detach_()
+        data = ori_data + eta
+        data = data.detach_()
+
+    return data.to(torch.device("cpu"))
+
 def labels_to_one_hot(labels, num_class, device):
     # convert labels to one-hot
     labels_one_hot = torch.FloatTensor(labels.shape[0], num_class).to(device)
@@ -302,7 +324,7 @@ def prepare_data(args):
 
     return train_loaders, test_loaders
 
-def train(model, train_loader, optimizer, loss_fun, client_num, device):
+def train(model, train_loader, optimizer, loss_fun, client_num, device, robust_training):
     model.train()
     num_data = 0
     correct = 0
@@ -311,6 +333,8 @@ def train(model, train_loader, optimizer, loss_fun, client_num, device):
     for step in range(len(train_iter)):
         optimizer.zero_grad()
         x, y = next(train_iter)
+        if robust_training:
+            x = pgd_attack(model, x, y, loss_fun, device)
         num_data += y.size(0)
         x = x.to(device).float()
         y = y.to(device).long()
@@ -422,7 +446,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     parser.add_argument('--batch', type = int, default= 256, help ='batch size')
     parser.add_argument('--iters', type = int, default=100, help = 'iterations for communication')
-    parser.add_argument('--wk_iters', type = int, default=1, help = 'optimization iters in local worker between communication')
+    parser.add_argument('--wk_iters', type = int, default=10, help = 'optimization iters in local worker between communication')
     parser.add_argument('--mode', type = str, default='fedbn', help='fedavg | fedprox | fedbn')
     parser.add_argument('--mu', type=float, default=1e-2, help='The hyper parameter for fedprox')
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
@@ -436,10 +460,11 @@ if __name__ == '__main__':
                         help='momentum of img optimizer')
     parser.add_argument('--iters_img', default=10, type=int, metavar='N',
                         help='number of total inner epochs to run')
-    parser.add_argument('--param_gamma', default=1, type=float)
+    parser.add_argument('--param_gamma', default=0.01, type=float)
     parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=10, type=int)
-    parser.add_argument('--lr_img', default=1000., type=float)
+    parser.add_argument('--lr_img', default=100., type=float)
+    parser.add_argument('--begin_generation', default=1, type=int)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
@@ -516,16 +541,16 @@ if __name__ == '__main__':
             param.requires_grad = False
         server_model.eval()
 
-        if a_iter >= 40:
-            if args.synth_method == 'ce':
-                pass
-            elif args.synth_method == 'admm':
-                vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
-
-        if a_iter==40:
-            for i in range(10):
-                plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
-                plt.savefig("vir"+str(i))
+        # if a_iter >= 40:
+        #     if args.synth_method == 'ce':
+        #         pass
+        #     elif args.synth_method == 'admm':
+        #         vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], server_model, args)
+        #
+        # if a_iter==40:
+        #     for i in range(10):
+        #         plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
+        #         plt.savefig("vir"+str(i))
         
 
         optimizers = [optim.SGD(params=models[idx].parameters(), lr=args.lr) for idx in range(client_num)]
@@ -541,16 +566,19 @@ if __name__ == '__main__':
                     if a_iter > 0:
                         train_fedprox(args, model, train_loader, optimizer, loss_fun, client_num, device)
                     else:
-                        train(model, train_loader, optimizer, loss_fun, client_num, device)
+                        train(model, train_loader, optimizer, loss_fun, client_num, device, False)
                 else:
-                    train(model, train_loader, optimizer, loss_fun, client_num, device)
+                    if a_iter == args.begin_generation:
+                        train(model, train_loader, optimizer, loss_fun, client_num, device, True)
+                    else:
+                        train(model, train_loader, optimizer, loss_fun, client_num, device, False)
 
         for param in models[0].parameters():
             param.requires_grad = False
         models[0].eval()
-        if a_iter >= 20:
+        if a_iter >= args.begin_generation:
             vir_dataset, vir_labels = src_img_synth_admm(test_loaders[client_num], models[0], args)
-        if a_iter==20:
+        if a_iter== args.begin_generation:
             for i in range(10):
                 plt.imshow(np.moveaxis(vir_dataset[i].cpu().detach().numpy(), 0, -1))
                 plt.savefig("vir"+str(i))
