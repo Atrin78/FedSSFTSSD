@@ -26,7 +26,7 @@ def pgd_attack(model, data, labels, loss_fun, device, eps=0.05, alpha=0.003125, 
     data = data.to(device).float
     labels = labels.to(device).long
 
-    ori_data = data.data
+    ori_data = data.clone().detach().to(device).float
 
     for i in range(iters):
         data.requires_grad = True
