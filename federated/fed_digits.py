@@ -446,7 +446,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     parser.add_argument('--batch', type = int, default= 256, help ='batch size')
     parser.add_argument('--iters', type = int, default=100, help = 'iterations for communication')
-    parser.add_argument('--wk_iters', type = int, default=50, help = 'optimization iters in local worker between communication')
+    parser.add_argument('--wk_iters', type = int, default=300, help = 'optimization iters in local worker between communication')
     parser.add_argument('--mode', type = str, default='fedbn', help='fedavg | fedprox | fedbn')
     parser.add_argument('--mu', type=float, default=1e-2, help='The hyper parameter for fedprox')
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     parser.add_argument('--param_admm_rho', default=0.01, type=float)
     parser.add_argument('--iters_admm', default=20, type=int)
     parser.add_argument('--lr_img', default=100., type=float)
-    parser.add_argument('--begin_generation', default=1, type=int)
+    parser.add_argument('--begin_generation', default=0, type=int)
     args = parser.parse_args()
 
     exp_folder = 'federated_digits'
