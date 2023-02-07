@@ -106,7 +106,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 #     for i in range(10):
                 #         plt.imshow(np.moveaxis(images_s[i].cpu().detach().numpy(), 0, -1))
                 #         plt.savefig("step" + str(iter_i)+'-' + str(i))
-                y_s, f_s = src_model(images_s)
+                y_s, f_s = src_model(torch.clip(images_s, 0.0, 255.0))
                 loss = func.cross_entropy(y_s, labels_s)
                 p_s = func.softmax(y_s, dim=1)
                 grad_matrix = (p_s - plabel_onehot).t() @ f_s / p_s.size(0)
@@ -120,10 +120,10 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 # print('grad')
                 # print(images_s.grad)
                 optimizer_s.step()
-                images_s = torch.clip(images_s, 0.0, 255.0)
+
 
             # update src imgs
-            gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = images_s
+            gen_dataset[batch_idx*args.batch:(batch_idx+1)*args.batch] = torch.clip(images_s, 0.0, 255.0)
        #     for img, path in zip(images_s.detach_().cpu(), paths):
        #         torch.save(img.clone(), path)
 
