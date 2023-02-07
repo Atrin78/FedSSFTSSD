@@ -23,14 +23,14 @@ import matplotlib.pyplot as plt
 
 
 def pgd_attack(model, data, labels, loss_fun, device, eps=0.05, alpha=0.003125, iters=40):
-    data = data.to(device)
-    labels = labels.to(device)
+    data = data.to(device).float
+    labels = labels.to(device).long
 
     ori_data = data.data
 
     for i in range(iters):
         data.requires_grad = True
-        outputs = model(data)
+        outputs,_ = model(data)
 
         model.zero_grad()
         cost = loss_fun(outputs, labels).to(device)
