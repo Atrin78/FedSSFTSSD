@@ -449,7 +449,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     parser.add_argument('--batch', type = int, default= 256, help ='batch size')
     parser.add_argument('--iters', type = int, default=100, help = 'iterations for communication')
-    parser.add_argument('--wk_iters', type = int, default=300, help = 'optimization iters in local worker between communication')
+    parser.add_argument('--wk_iters', type = int, default=20, help = 'optimization iters in local worker between communication')
     parser.add_argument('--mode', type = str, default='fedbn', help='fedavg | fedprox | fedbn')
     parser.add_argument('--mu', type=float, default=1e-2, help='The hyper parameter for fedprox')
     parser.add_argument('--save_path', type = str, default='../checkpoint/digits', help='path to save the checkpoint')
