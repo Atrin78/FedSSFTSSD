@@ -99,7 +99,7 @@ def src_img_synth_admm(gen_loader, src_model, args):
     for i in range(args.iters_admm):
 
         print(f'admm iter: {i}/{args.iters_admm}')
-
+        lss = 0
         # step1: update imgs
         for batch_idx, (images_s, labels_s) in enumerate(gen_loader):
             if batch_idx==0 and i==0:
@@ -138,6 +138,9 @@ def src_img_synth_admm(gen_loader, src_model, args):
                 loss += torch.trace(LAMB.t() @ new_matrix)
                 
                 optimizer_s.zero_grad()
+                if batch_idx == 0:
+                    print(iter_i)
+                    print(loss)
                 loss.backward()
                 # print('grad')
                 # print(images_s.grad)
